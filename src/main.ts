@@ -14,7 +14,8 @@ async function bootstrap() {
     const scraperService = app.get(ScraperService);
 
     try {
-      await scraperService.scrapeAll(500); // Max 500 articles per site
+      // TEST MODE: Only 10 articles from Finuslugi
+      await scraperService.scrapeAll(10);
       console.log('Scraping completed successfully!');
       await app.close();
       process.exit(0);

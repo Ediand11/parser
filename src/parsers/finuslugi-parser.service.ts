@@ -72,8 +72,15 @@ export class FinuslugiParserService {
         // Extract links and add to queue
         await this.extractAndEnqueueLinks(html, url);
 
-        // Check if this is an article page
-        if (isArticlePage(html)) {
+        // Check if this is an article page (not a listing page)
+        const isArticle = this.isArticleUrl(url);
+        const hasArticleContent = isArticlePage(html);
+
+        this.logger.debug(
+          `URL: ${url} - isArticle: ${isArticle}, hasContent: ${hasArticleContent}`,
+        );
+
+        if (isArticle && hasArticleContent) {
           const article = this.extractArticleData(html, url);
 
           if (article && !article.isEmpty) {
@@ -109,22 +116,129 @@ export class FinuslugiParserService {
     const $ = cheerio.load(html);
     const links: string[] = [];
 
-    $('a[href]').each((_, element) => {
-      const href = $(element).attr('href');
-      if (!href) return;
+    // Find article cards by class prefix (ArticleGrid_card)
+    const articleCards = $('[class*="ArticleGrid_card"]');
 
-      try {
-        // Convert relative URLs to absolute
-        const absoluteUrl = new URL(href, baseUrl).toString();
+    if (articleCards.length > 0) {
+      this.logger.debug(`Found ${articleCards.length} article cards on page`);
 
-        // Only enqueue valid navigator URLs
-        if (this.isValidFinuslugiUrl(absoluteUrl)) {
-          links.push(absoluteUrl);
+      let totalLinksInCards = 0;
+      let validLinks = 0;
+
+      articleCards.each((_, card) => {
+        const $card = $(card);
+
+        // Try multiple approaches to find the link:
+        // 1. Card itself is a link
+        if ($card.is('a')) {
+          const href = $card.attr('href');
+          if (href) {
+            totalLinksInCards++;
+            try {
+              const absoluteUrl = new URL(href, baseUrl).toString();
+              const isValid = this.isValidFinuslugiUrl(absoluteUrl);
+
+              if (totalLinksInCards <= 5) {
+                this.logger.debug(
+                  `Card is link ${totalLinksInCards}: ${href} (valid: ${isValid})`,
+                );
+              }
+
+              if (isValid) {
+                links.push(absoluteUrl);
+                validLinks++;
+              }
+            } catch (error) {
+              if (totalLinksInCards <= 5) {
+                this.logger.debug(`Invalid card URL: ${href}`);
+              }
+            }
+          }
         }
-      } catch {
-        // Invalid URL, skip
-      }
-    });
+
+        // 2. Look for links inside the card
+        $card.find('a[href]').each((_, element) => {
+          const href = $(element).attr('href');
+          if (!href) return;
+
+          totalLinksInCards++;
+
+          try {
+            const absoluteUrl = new URL(href, baseUrl).toString();
+            const isValid = this.isValidFinuslugiUrl(absoluteUrl);
+
+            if (totalLinksInCards <= 5) {
+              this.logger.debug(
+                `Link inside card ${totalLinksInCards}: ${href} (valid: ${isValid})`,
+              );
+            }
+
+            if (isValid) {
+              links.push(absoluteUrl);
+              validLinks++;
+            }
+          } catch (error) {
+            if (totalLinksInCards <= 5) {
+              this.logger.debug(`Invalid URL: ${href}`);
+            }
+          }
+        });
+
+        // 3. Look for parent link
+        const $parentLink = $card.closest('a[href]');
+        if ($parentLink.length > 0) {
+          const href = $parentLink.attr('href');
+          if (href) {
+            totalLinksInCards++;
+            try {
+              const absoluteUrl = new URL(href, baseUrl).toString();
+              const isValid = this.isValidFinuslugiUrl(absoluteUrl);
+
+              if (totalLinksInCards <= 5) {
+                this.logger.debug(
+                  `Parent link ${totalLinksInCards}: ${href} (valid: ${isValid})`,
+                );
+              }
+
+              if (isValid) {
+                links.push(absoluteUrl);
+                validLinks++;
+              }
+            } catch (error) {
+              if (totalLinksInCards <= 5) {
+                this.logger.debug(`Invalid parent URL: ${href}`);
+              }
+            }
+          }
+        }
+      });
+
+      this.logger.debug(
+        `Total links found: ${totalLinksInCards}, Valid: ${validLinks}`,
+      );
+    } else {
+      // Fallback: extract all links if no cards found
+      $('a[href]').each((_, element) => {
+        const href = $(element).attr('href');
+        if (!href) return;
+
+        try {
+          const absoluteUrl = new URL(href, baseUrl).toString();
+          if (this.isValidFinuslugiUrl(absoluteUrl)) {
+            links.push(absoluteUrl);
+          }
+        } catch {
+          // Invalid URL, skip
+        }
+      });
+    }
+
+    if (links.length > 0) {
+      this.logger.debug(`Enqueueing ${links.length} links from ${baseUrl}`);
+      this.logger.debug(`Sample links: ${links.slice(0, 3).join(', ')}`);
+    } else {
+      this.logger.warn(`No links found on ${baseUrl}`);
+    }
 
     this.urlQueue.enqueueBatch(links);
   }
@@ -178,6 +292,27 @@ export class FinuslugiParserService {
     } catch (error) {
       this.logger.error(`Failed to extract article from ${url}:`, error);
       return null;
+    }
+  }
+
+  private isArticleUrl(url: string): boolean {
+    try {
+      const urlObj = new URL(url);
+      const path = urlObj.pathname;
+
+      // Exclude the base navigator path and listing pages
+      if (path === this.NAVIGATOR_PATH || path === `${this.NAVIGATOR_PATH}/`) {
+        return false;
+      }
+
+      // Article URLs typically have deeper nesting: /navigator/category/article-slug
+      const pathParts = path.split('/').filter((p) => p);
+
+      // Must have at least 3 parts: ['navigator', 'category', 'article']
+      // or at least 2 if it's a direct article
+      return pathParts.length >= 2 && pathParts[0] === 'navigator';
+    } catch {
+      return false;
     }
   }
 

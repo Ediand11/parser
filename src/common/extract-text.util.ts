@@ -10,9 +10,8 @@ export interface SiteSelectors {
 // Open actual article pages in browser, inspect elements, and update these selectors
 export const SITE_SELECTORS: Record<string, SiteSelectors> = {
   finuslugi: {
-    // TODO: Verify these selectors by opening https://finuslugi.ru/navigator/[article] in DevTools
     title: 'h1',
-    content: '.article-content, .post-content, .entry-content, article',
+    content: 'article, [class*="article"], [class*="content"], main',
     removeSelectors: [
       '.ads',
       '.advertisement',
@@ -25,6 +24,8 @@ export const SITE_SELECTORS: Record<string, SiteSelectors> = {
       'nav',
       'header',
       'aside',
+      '[class*="sidebar"]',
+      '[class*="related"]',
     ],
   },
   tj: {

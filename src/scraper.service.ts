@@ -29,8 +29,8 @@ export class ScraperService {
     // Scrape Finuslugi
     await this.scrapeFinuslugi(maxArticlesPerSite);
 
-    // Scrape T-J
-    await this.scrapeTJ(maxArticlesPerSite);
+    // TODO: Uncomment when ready to scrape T-J
+    // await this.scrapeTJ(maxArticlesPerSite);
 
     this.logger.log('Scraping completed!');
     this.logger.log(`CSV file saved at: ${this.csvExport.getCsvPath()}`);

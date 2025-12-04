@@ -1,15 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
-import Sitemapper from 'sitemapper';
 
 @Injectable()
 export class SitemapParserService {
   private readonly logger = new Logger(SitemapParserService.name);
+  private Sitemapper: any;
+
+  private async loadSitemapper() {
+    if (!this.Sitemapper) {
+      // Dynamic import for ESM module
+      const module = await import('sitemapper');
+      this.Sitemapper = module.default;
+    }
+    return this.Sitemapper;
+  }
 
   async fetchSitemapUrls(sitemapUrl: string): Promise<string[]> {
     try {
       this.logger.log(`Fetching sitemap from ${sitemapUrl}`);
 
-      const sitemapper = new Sitemapper({
+      const SitemapperClass = await this.loadSitemapper();
+      const sitemapper = new SitemapperClass({
         url: sitemapUrl,
         timeout: 15000,
       });
@@ -26,16 +36,15 @@ export class SitemapParserService {
   }
 
   async fetchSitemapIndex(sitemapIndexUrl: string): Promise<string[]> {
-    this.logger.log(
-      `Fetching sitemap index from ${sitemapIndexUrl}`,
-    );
-
-    const sitemapper = new Sitemapper({
-      url: sitemapIndexUrl,
-      timeout: 15000,
-    });
+    this.logger.log(`Fetching sitemap index from ${sitemapIndexUrl}`);
 
     try {
+      const SitemapperClass = await this.loadSitemapper();
+      const sitemapper = new SitemapperClass({
+        url: sitemapIndexUrl,
+        timeout: 15000,
+      });
+
       // First, fetch the sitemap index to get all nested sitemaps
       const { sites: nestedSitemaps } = await sitemapper.fetch();
 
@@ -50,7 +59,7 @@ export class SitemapParserService {
         this.logger.log(`Fetching nested sitemap: ${nestedSitemapUrl}`);
 
         try {
-          const nestedSitemapper = new Sitemapper({
+          const nestedSitemapper = new SitemapperClass({
             url: nestedSitemapUrl,
             timeout: 15000,
           });
