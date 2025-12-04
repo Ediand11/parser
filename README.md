@@ -1,98 +1,267 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Парсер статей для finuslugi.ru и t-j.ru
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Асинхронный Python-парсер для сбора статей с finuslugi.ru и t-j.ru с экспортом в CSV.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Возможности
 
-## Description
+- ✅ **finuslugi.ru**: BFS обход /navigator с автоматическим сбором статей
+- ⚠️ **t-j.ru**: Парсинг через sitemap (защита QRATOR блокирует доступ к статьям)
+- ✅ Rate limiting (1 запрос/сек)
+- ✅ Соблюдение robots.txt
+- ✅ Экспорт в CSV с 5 колонками
+- ✅ Параллельная обработка (до 3 запросов одновременно)
+- ✅ Логирование всех операций
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Установка
 
 ```bash
-$ pnpm install
+# Создать виртуальное окружение
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# или
+venv\Scripts\activate  # Windows
+
+# Установить зависимости
+pip install -r requirements.txt
 ```
 
-## Compile and run the project
+## Использование
+
+### Быстрый старт (рекомендуется)
+
+Используйте скрипт `run.sh` который автоматически активирует виртуальное окружение:
 
 ```bash
-# development
-$ pnpm run start
+# Парсить только finuslugi.ru (рекомендуется)
+./run.sh --site finuslugi --limit 50 --output finuslugi.csv
 
-# watch mode
-$ pnpm run start:dev
+# Парсить все статьи без ограничений
+./run.sh --site finuslugi --output all_articles.csv
 
-# production mode
-$ pnpm run start:prod
+# С дебаг логами
+./run.sh --site finuslugi --limit 10 --log-level DEBUG
 ```
 
-## Run tests
+### Альтернативный способ (через venv)
+
+Если предпочитаете работать с venv напрямую:
 
 ```bash
-# unit tests
-$ pnpm run test
+# 1. Активировать виртуальное окружение
+source venv/bin/activate
 
-# e2e tests
-$ pnpm run test:e2e
+# 2. Запустить парсер
+python3 main.py --site finuslugi --limit 50 --output finuslugi.csv
 
-# test coverage
-$ pnpm run test:cov
+# 3. Деактивировать (опционально)
+deactivate
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Другие примеры
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+# Парсить оба сайта с ограничением
+./run.sh --site both --limit 20 --output articles.csv
+
+# Парсить через venv напрямую (без активации)
+venv/bin/python3 main.py --site finuslugi --limit 100 --output articles.csv
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Параметры командной строки
 
-## Resources
+- `--site` - Какой сайт парсить: `finuslugi`, `tj`, `both` (по умолчанию: `both`)
+- `--output` - Имя выходного CSV файла (по умолчанию: `articles.csv`)
+- `--limit` - Максимум статей с каждого сайта (по умолчанию: без ограничений)
+- `--log-level` - Уровень логирования: `DEBUG`, `INFO`, `WARNING`, `ERROR` (по умолчанию: `INFO`)
 
-Check out a few resources that may come in handy when working with NestJS:
+## Структура CSV
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+CSV файл содержит следующие колонки:
 
-## Support
+1. **Основная ссылка** - https://finuslugi.ru/navigator или https://t-j.ru/
+2. **Ссылка на раздел** - URL раздела/категории
+3. **Ссылка на статью** - URL конкретной статьи
+4. **Название статьи** - Заголовок (h1)
+5. **Вся статья** - Полный текст (h2, h3, p, li элементы)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Архитектура
 
-## Stay in touch
+```
+scraper/
+├── core/
+│   ├── http_client.py  # HTTP клиент с rate limiting
+│   ├── models.py       # ArticleRow dataclass
+│   └── utils.py        # Утилиты для извлечения текста
+├── parsers/
+│   ├── finuslugi.py    # BFS парсер для finuslugi.ru
+│   └── tj.py           # Парсер через sitemap для t-j.ru
+└── export/
+    └── csv_export.py   # Экспорт в CSV
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+main.py                 # CLI точка входа
+run.sh                  # Скрипт запуска (автоматически активирует venv)
+requirements.txt        # Зависимости Python
+```
 
-## License
+## Алгоритмы
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Finuslugi.ru (BFS)
+
+1. Начинает с https://finuslugi.ru/navigator
+2. Собирает все ссылки на странице
+3. Фильтрует по robots.txt (исключает /banki/, /ipoteka/, tracking параметры)
+4. URL со `/stat_` в пути считаются статьями
+5. Остальные URL добавляются в очередь для дальнейшего обхода
+6. Обрабатывает пагинацию (/navigator/str_2, /navigator/str_3, и т.д.)
+7. Останавливается при достижении limit или исчерпании очереди
+
+### T-j.ru (Sitemap)
+
+1. Загружает https://t-j.ru/sitemap-articles.xml
+2. Извлекает все URL статей
+3. Фильтрует запрещённые пути (/api/, /login/, /exam/, и др.)
+4. ⚠️ **ПРОБЛЕМА**: QRATOR защита блокирует доступ к статьям (401 Unauthorized)
+
+## Известные ограничения
+
+### t-j.ru защита QRATOR
+
+T-j.ru использует систему защиты QRATOR, которая блокирует программный доступ:
+
+- ✅ Sitemap доступен
+- ❌ Страницы статей возвращают 401 Unauthorized
+- ❌ Обход через cookies не помогает
+- ❌ Изменение User-Agent не помогает
+
+**Решения**:
+
+1. **Selenium/Playwright** (рекомендуется для t-j.ru):
+   ```bash
+   pip install playwright
+   playwright install chromium
+   ```
+
+2. **Scrapy с Splash** - для JavaScript рендеринга
+
+3. **Puppeteer** (Node.js альтернатива)
+
+4. **Ручной обход** - использовать браузер с DevTools
+
+## Соблюдение robots.txt
+
+### Finuslugi.ru
+
+Запрещено:
+- `/banki/*`
+- `/ipoteka/*`
+- `/arhiv_*`
+- URL с параметрами `yclid=` или `gclid=`
+
+### T-j.ru
+
+Запрещено:
+- `/api/*`
+- `/login/*`
+- `/exam/*`
+- `/recommendations/*`
+- `/look/*`
+
+## Примеры вывода
+
+### Успешный запуск
+
+```bash
+$ ./run.sh --site finuslugi --limit 10
+2025-12-04 22:26:21 - INFO - Парсер статей запущен
+2025-12-04 22:26:21 - INFO - Starting BFS crawl from https://finuslugi.ru/navigator
+2025-12-04 22:26:26 - INFO - Parsed: 5 выгодных годовых вкладов...
+...
+2025-12-04 22:26:36 - INFO - Finuslugi parser complete. Parsed 10 articles
+2025-12-04 22:26:36 - INFO - Exported 10 articles to articles.csv
+```
+
+### Проверка результата
+
+```bash
+# Количество строк (должно быть N+1, где N - количество статей)
+$ wc -l articles.csv
+11 articles.csv
+
+# Первые 3 строки
+$ head -n 3 articles.csv
+Основная ссылка,Ссылка на раздел,Ссылка на статью,Название статьи,Вся статья
+https://finuslugi.ru/navigator,...
+```
+
+## Производительность
+
+- **Rate limit**: 1 запрос/секунду
+- **Параллельность**: до 3 одновременных запросов
+- **Реальная скорость**: ~3 запроса/секунду максимум
+- **Finuslugi 100 статей**: ~2-3 минуты (зависит от глубины BFS)
+
+## Устранение неполадок
+
+### Ошибка: ModuleNotFoundError: No module named 'httpx'
+
+Эта ошибка возникает, когда вы запускаете парсер без активации виртуального окружения.
+
+**Решение 1 (рекомендуется):** Используйте скрипт `run.sh`:
+```bash
+./run.sh --site finuslugi --limit 10 --output test.csv
+```
+
+**Решение 2:** Активируйте venv перед запуском:
+```bash
+source venv/bin/activate
+python3 main.py --site finuslugi --limit 10 --output test.csv
+```
+
+**Решение 3:** Запускайте через Python из venv:
+```bash
+venv/bin/python3 main.py --site finuslugi --limit 10 --output test.csv
+```
+
+### Зависимости не установлены
+
+Если зависимости не установлены или повреждены:
+```bash
+source venv/bin/activate
+pip install --upgrade -r requirements.txt
+```
+
+## Разработка
+
+### Добавление нового сайта
+
+1. Создайте `scraper/parsers/yoursite.py`
+2. Реализуйте функции:
+   - `is_allowed_yoursite_url(href: str) -> bool`
+   - `parse_all_yoursite(http: HttpClient, limit) -> List[ArticleRow]`
+3. Добавьте в `main.py`:
+   ```python
+   if args.site in ("yoursite", "both"):
+       rows.extend(await parse_all_yoursite(http, limit=args.limit))
+   ```
+
+### Тестирование
+
+```bash
+# Быстрый тест с ограничением
+./run.sh --site finuslugi --limit 5 --output test.csv
+
+# Проверка логов
+./run.sh --site finuslugi --limit 3 --log-level DEBUG
+
+# Или через venv напрямую
+source venv/bin/activate
+python3 main.py --site finuslugi --limit 5 --output test.csv
+```
+
+## Лицензия
+
+MIT
+
+## Автор
+
+Создано согласно требованиям в todo.md
